@@ -31,10 +31,15 @@ export default function MonitoringPage() {
 
       const dependentIds = dependents.map((d: any) => d.id);
 
-      const { data: medicines } = await supabase
+      let { data: medicines } = await supabase
         .from('medicines')
         .select('*')
         .in('dependent_id', dependentIds);
+
+      if (medicines) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        medicines = medicines.filter(med => !med.end_date || med.end_date >= todayStr);
+      }
 
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();

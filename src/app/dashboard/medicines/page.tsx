@@ -54,7 +54,10 @@ export default function MedicinesPage() {
         .order('created_at', { ascending: false });
       
       if (data) {
-        setMedicines(data);
+        const todayStr = new Date().toISOString().split('T')[0];
+        const activeMedicines = data.filter(med => !med.end_date || med.end_date >= todayStr);
+        
+        setMedicines(activeMedicines);
         const now = new Date();
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
         const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
@@ -103,11 +106,13 @@ export default function MedicinesPage() {
   const deleteMedicine = async (id: string) => {
     if (!confirm('Are you sure you want to delete this medicine?')) return;
     try {
-      await supabase.from('medicines').delete().eq('id', id);
+      const { error } = await supabase.from('medicines').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Medicine deleted successfully');
       fetchMedicinesAndDependents();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Failed to delete medicine');
+      toast.error('Failed to delete medicine: ' + error.message);
     }
   };
 
