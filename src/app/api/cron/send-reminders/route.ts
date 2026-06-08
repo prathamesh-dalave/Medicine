@@ -153,8 +153,9 @@ export async function GET(request: Request) {
 
         // --- Send SMS (To Dependent or Caregiver) ---
         let targetPhone = null;
-        if (med.dependent_id && med.dependents?.phone) {
-          targetPhone = med.dependents.phone;
+        const dep = Array.isArray(med.dependents) ? med.dependents[0] : med.dependents;
+        if (med.dependent_id && dep?.phone) {
+          targetPhone = dep.phone;
         } else {
           const profile = profiles.find(p => p.id === med.patient_id);
           if (profile?.phone_number) targetPhone = profile.phone_number;
