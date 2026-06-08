@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     // 3. Find medicines scheduled BEFORE the cutoff
     const { data: medicines, error: medError } = await supabase
       .from('medicines')
-      .select('id, name, dosage, patient_id, schedule_time')
+      .select('id, name, dosage, patient_id, schedule_time, dependent_id')
       .lt('schedule_time', cutoffTime);
 
     if (medError) throw medError;
