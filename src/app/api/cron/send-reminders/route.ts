@@ -30,7 +30,15 @@ const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
  * Helper: Format a Date to HH:MM:00 string
  */
 function toTimeString(date: Date): string {
-  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:00`;
+  const timeString = date.toLocaleTimeString('en-US', {
+    timeZone: 'Asia/Kolkata',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  let [hr, min] = timeString.split(':');
+  if (hr === '24') hr = '00';
+  return `${hr}:${min}:00`;
 }
 
 /**

@@ -37,9 +37,15 @@ export async function GET(request: Request) {
     // 2. Grace period: 30 minutes ago
     const now = new Date();
     const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
-    const targetHours = thirtyMinAgo.getHours().toString().padStart(2, '0');
-    const targetMinutes = thirtyMinAgo.getMinutes().toString().padStart(2, '0');
-    const cutoffTime = `${targetHours}:${targetMinutes}:00`;
+    const timeString = thirtyMinAgo.toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    let [hr, min] = timeString.split(':');
+    if (hr === '24') hr = '00';
+    const cutoffTime = `${hr}:${min}:00`;
 
     console.log(`[Missed Dose] Checking for unlogged medicines before: ${cutoffTime}`);
 
