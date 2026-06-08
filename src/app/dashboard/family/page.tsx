@@ -96,11 +96,11 @@ export default function FamilyPage() {
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
+          <DialogTrigger render={
             <Button className="bg-primary hover:bg-primary/90 text-white">
               <UserPlus className="w-4 h-4 mr-2" /> Add Family Member
             </Button>
-          </DialogTrigger>
+          } />
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Add Family Member</DialogTitle>

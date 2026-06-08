@@ -56,7 +56,7 @@ export async function subscribeToPush(): Promise<{ success: boolean; error?: str
       if (vapidPublicKey) {
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as BufferSource,
         });
 
         // 4. Save subscription to Supabase
