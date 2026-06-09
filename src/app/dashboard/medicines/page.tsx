@@ -17,6 +17,7 @@ export default function MedicinesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [todayLogs, setTodayLogs] = useState<Record<string, string>>({});
   const [markingTaken, setMarkingTaken] = useState<string | null>(null);
+  const [editingMedId, setEditingMedId] = useState<string | null>(null);
   
   const [dependents, setDependents] = useState<any[]>([]);
 
@@ -116,6 +117,26 @@ export default function MedicinesPage() {
     }
   };
 
+  const openEditModal = (med: any) => {
+    setEditingMedId(med.id);
+    setFormData({
+      name: med.name,
+      dosage: med.dosage || '',
+      frequency: 1,
+      schedule_times: [med.schedule_time],
+      start_date: med.start_date || '',
+      end_date: med.end_date || '',
+      dependent_id: med.dependent_id || ''
+    });
+    setIsSheetOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingMedId(null);
+    setFormData(initialFormState);
+    setIsSheetOpen(true);
+  };
+
   const handleFrequencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newFreq = parseInt(e.target.value);
     const newTimes = [...formData.schedule_times];
@@ -147,25 +168,39 @@ export default function MedicinesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const payloads = formData.schedule_times.map(time => ({
-        name: formData.name,
-        dosage: formData.dosage || null,
-        schedule_time: time,
-        start_date: formData.start_date || null,
-        end_date: formData.end_date || null,
-        patient_id: user.id,
-        dependent_id: formData.dependent_id || null
-      }));
+      if (editingMedId) {
+        const payload = {
+          name: formData.name,
+          dosage: formData.dosage || null,
+          schedule_time: formData.schedule_times[0],
+          start_date: formData.start_date || null,
+          end_date: formData.end_date || null,
+          dependent_id: formData.dependent_id || null
+        };
+        const { error } = await supabase.from('medicines').update(payload).eq('id', editingMedId);
+        if (error) throw error;
+        toast.success('Medicine updated successfully!');
+      } else {
+        const payloads = formData.schedule_times.map(time => ({
+          name: formData.name,
+          dosage: formData.dosage || null,
+          schedule_time: time,
+          start_date: formData.start_date || null,
+          end_date: formData.end_date || null,
+          patient_id: user.id,
+          dependent_id: formData.dependent_id || null
+        }));
 
-      const { error } = await supabase.from('medicines').insert(payloads);
-
-      if (error) throw error;
+        const { error } = await supabase.from('medicines').insert(payloads);
+        if (error) throw error;
+        toast.success(formData.frequency > 1 ? `${formData.frequency} doses added successfully!` : 'Medicine added successfully!');
+      }
       
       setIsSheetOpen(false);
+      setEditingMedId(null);
       setFormData(initialFormState);
       
       fetchMedicinesAndDependents();
-      toast.success(formData.frequency > 1 ? `${formData.frequency} doses added successfully!` : 'Medicine added successfully!');
     } catch (error: any) {
       console.error('Supabase Error Detailed:', JSON.stringify(error, null, 2));
       toast.error('DB Error: ' + JSON.stringify(error));
@@ -183,12 +218,12 @@ export default function MedicinesPage() {
         </div>
         
         <Dialog open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-          <DialogTrigger render={<Button className="shrink-0 bg-primary hover:bg-primary/90 text-white" />}>
+          <DialogTrigger render={<Button onClick={handleAddNew} className="shrink-0 bg-primary hover:bg-primary/90 text-white" />}>
             <Plus className="w-4 h-4 mr-2" /> Add Medicine
           </DialogTrigger>
           <DialogContent className="overflow-y-auto max-h-[90vh] w-full sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add New Medicine</DialogTitle>
+              <DialogTitle>{editingMedId ? 'Edit Medicine' : 'Add New Medicine'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-6">
               <div className="space-y-2">
@@ -228,26 +263,28 @@ export default function MedicinesPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="frequency">Daily Frequency</Label>
-                <select 
-                  id="frequency"
-                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={formData.frequency}
-                  onChange={handleFrequencyChange}
-                >
-                  <option value={1}>Once a day</option>
-                  <option value={2}>Twice a day</option>
-                  <option value={3}>3 times a day</option>
-                  <option value={4}>4 times a day</option>
-                </select>
-              </div>
+              {!editingMedId && (
+                <div className="space-y-2">
+                  <Label htmlFor="frequency">Daily Frequency</Label>
+                  <select 
+                    id="frequency"
+                    className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={formData.frequency}
+                    onChange={handleFrequencyChange}
+                  >
+                    <option value={1}>Once a day</option>
+                    <option value={2}>Twice a day</option>
+                    <option value={3}>3 times a day</option>
+                    <option value={4}>4 times a day</option>
+                  </select>
+                </div>
+              )}
 
               <div className="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
-                <Label>Scheduled Times</Label>
+                <Label>{editingMedId ? 'Scheduled Time' : 'Scheduled Times'}</Label>
                 {formData.schedule_times.map((time, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-slate-500 w-16">Dose {index + 1}:</span>
+                    {!editingMedId && <span className="text-sm font-medium text-slate-500 w-16">Dose {index + 1}:</span>}
                     <Input 
                       type="time" 
                       required 
@@ -351,6 +388,13 @@ export default function MedicinesPage() {
                         Mark Taken
                       </Button>
                     )}
+                    <Button 
+                      variant="outline" 
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                      onClick={() => openEditModal(med)}
+                    >
+                      Edit
+                    </Button>
                     <Button 
                       variant="outline" 
                       className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"

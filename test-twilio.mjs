@@ -6,7 +6,7 @@ dotenv.config({ path: '.env' });
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromPhone = process.env.TWILIO_PHONE_NUMBER;
-const toPhone = '+919860952918'; // The user's phone number
+const toPhone = '+919076242872'; // The user's new phone number
 
 const client = twilio(accountSid, authToken);
 

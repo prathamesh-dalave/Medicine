@@ -1,9 +1,29 @@
+'use client';
+
 import Link from 'next/link';
 import { Pill, Clock, ShieldCheck, Users, AlertCircle, Heart, ArrowRight, BarChart2 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function LandingPage() {
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+    });
+    
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+    });
+    
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* Navbar */}
@@ -16,10 +36,18 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-8 font-medium text-slate-600">
             <a href="#features" className="hover:text-primary transition-colors">Features</a>
             <a href="#awareness" className="hover:text-primary transition-colors">Awareness</a>
-            <Link href="/login" className="hover:text-primary transition-colors">Login</Link>
-            <Link href="/login" className={buttonVariants({ variant: "default" })}>
-              Get Started
-            </Link>
+            {user ? (
+              <Link href="/dashboard" className={buttonVariants({ variant: "default" })}>
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="hover:text-primary transition-colors">Login</Link>
+                <Link href="/login" className={buttonVariants({ variant: "default" })}>
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -36,8 +64,8 @@ export default function LandingPage() {
           A smart medicine reminder system designed for elderly users and families. Track doses, get alerts, and keep your loved ones safe — all in one simple app.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/login" className={buttonVariants({ size: "lg", className: "w-full sm:w-auto h-14 px-8 text-lg rounded-full" })}>
-            Get Started Free <ArrowRight className="w-5 h-5 ml-2" />
+          <Link href={user ? "/dashboard" : "/login"} className={buttonVariants({ size: "lg", className: "w-full sm:w-auto h-14 px-8 text-lg rounded-full" })}>
+            {user ? "Go to Dashboard" : "Get Started Free"} <ArrowRight className="w-5 h-5 ml-2" />
           </Link>
           <a href="#features" className={buttonVariants({ size: "lg", variant: "outline", className: "w-full sm:w-auto h-14 px-8 text-lg rounded-full" })}>
             See Features
