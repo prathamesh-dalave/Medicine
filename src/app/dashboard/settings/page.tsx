@@ -204,22 +204,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Language */}
-        <Card className="border-slate-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Globe className="w-5 h-5 text-slate-500" /> Regional Language
-            </CardTitle>
-            <CardDescription>Choose your preferred language for the interface.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <Button variant="default" className="bg-primary text-primary-foreground">English</Button>
-              <Button variant="outline">हिन्दी (Hindi)</Button>
-              <Button variant="outline">मराठी (Marathi)</Button>
-            </div>
-          </CardContent>
-        </Card>
+
 
         {/* Security */}
         <Card className="border-slate-200 shadow-sm">
@@ -230,7 +215,6 @@ export default function SettingsPage() {
             <CardDescription>Manage your account security and data.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full justify-start text-slate-700">Change Password</Button>
             <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">Delete Account</Button>
           </CardContent>
         </Card>
