@@ -24,7 +24,12 @@ export default function Dashboard() {
         .select('*, dependents(name)')
         .eq('patient_id', userId);
       
-      if (meds) setMedicines(meds);
+      let activeMeds: any[] = [];
+      if (meds) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        activeMeds = meds.filter(med => !med.end_date || med.end_date >= todayStr);
+        setMedicines(activeMeds);
+      }
 
       // Fetch logs for stats (today)
       const startOfDay = new Date();
@@ -44,7 +49,7 @@ export default function Dashboard() {
       });
 
       setStats({
-        total: meds?.length || 0,
+        total: activeMeds.length,
         taken,
         missed
       });

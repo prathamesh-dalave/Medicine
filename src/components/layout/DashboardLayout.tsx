@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white border-r border-slate-200">
       <div className="p-6">
-        <Link href="/dashboard" className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
             <Pill className="w-5 h-5" />
           </div>
