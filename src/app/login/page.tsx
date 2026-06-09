@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -63,6 +64,20 @@ export default function LoginPage() {
       setError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      toast.error('Google login failed: ' + err.message);
     }
   };
 
@@ -140,6 +155,25 @@ export default function LoginPage() {
                 disabled={loading}
               >
                 {loading ? 'Please wait...' : (isSignUpView ? 'Sign Up' : 'Sign In')}
+              </Button>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-white px-2 text-slate-500">Or continue with</span>
+                </div>
+              </div>
+
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full h-12 text-md rounded-xl text-slate-700 bg-white border-slate-200 hover:bg-slate-50" 
+                onClick={handleGoogleLogin}
+              >
+                <img src="https://www.google.com/favicon.ico" className="w-5 h-5 mr-3" alt="Google" />
+                Google
               </Button>
               
               <div className="text-center text-sm text-slate-500 mt-4">
