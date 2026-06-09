@@ -7,8 +7,13 @@ import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ReportsPage() {
+  const [allLogs, setAllLogs] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [dependents, setDependents] = useState<any[]>([]);
+  const [selectedMember, setSelectedMember] = useState('all');
+  const [duration, setDuration] = useState(7);
   
   // Stats
   const [takenCount, setTakenCount] = useState(0);
@@ -17,63 +22,28 @@ export default function ReportsPage() {
   const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchLogs = async () => {
+    const fetchData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Fetch logs for the last 7 days
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        // Fetch dependents
+        const { data: deps } = await supabase.from('dependents').select('*').eq('caregiver_id', user.id);
+        if (deps) setDependents(deps);
+
+        // Fetch logs for the last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
         const { data } = await supabase
           .from('logs')
-          .select('*, medicines!inner(name, patient_id)')
+          .select('*, medicines!inner(name, patient_id, dependent_id)')
           .eq('medicines.patient_id', user.id)
-          .gte('timestamp', sevenDaysAgo.toISOString())
+          .gte('timestamp', thirtyDaysAgo.toISOString())
           .order('timestamp', { ascending: false });
 
         if (data) {
-          setLogs(data);
-          
-          let taken = 0;
-          let missed = 0;
-          
-          // Group by date for Bar Chart
-          const dailyStats: Record<string, number> = {};
-          
-          // Initialize last 7 days
-          for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            dailyStats[dateStr] = 0;
-          }
-
-          data.forEach(log => {
-            if (log.status === 'taken') taken++;
-            if (log.status === 'missed') missed++;
-            
-            if (log.status === 'missed') {
-              const d = new Date(log.timestamp);
-              const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-              if (dailyStats[dateStr] !== undefined) {
-                dailyStats[dateStr]++;
-              }
-            }
-          });
-
-          setTakenCount(taken);
-          setMissedCount(missed);
-          // Assuming pending means scheduled for today but not yet logged (simplified logic for now)
-          setPendingCount(0); 
-
-          const formattedChartData = Object.keys(dailyStats).map(date => ({
-            name: date,
-            missed: dailyStats[date]
-          }));
-          
-          setChartData(formattedChartData);
+          setAllLogs(data);
         }
       } catch (err) {
         console.error(err);
@@ -82,8 +52,66 @@ export default function ReportsPage() {
       }
     };
 
-    fetchLogs();
+    fetchData();
   }, []);
+
+  useEffect(() => {
+    if (!allLogs) return;
+    
+    // Filter by member
+    let filteredLogs = allLogs;
+    if (selectedMember === 'myself') {
+      filteredLogs = allLogs.filter(l => !l.medicines.dependent_id);
+    } else if (selectedMember !== 'all') {
+      filteredLogs = allLogs.filter(l => l.medicines.dependent_id === selectedMember);
+    }
+
+    // Filter by duration
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - duration);
+    cutoffDate.setHours(0,0,0,0);
+    
+    filteredLogs = filteredLogs.filter(l => new Date(l.timestamp) >= cutoffDate);
+    
+    setLogs(filteredLogs); // For the table
+
+    let taken = 0;
+    let missed = 0;
+    
+    const dailyStats: Record<string, { taken: number, missed: number }> = {};
+    
+    // Initialize days
+    for (let i = duration - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      dailyStats[dateStr] = { taken: 0, missed: 0 };
+    }
+
+    filteredLogs.forEach(log => {
+      if (log.status === 'taken') taken++;
+      if (log.status === 'missed') missed++;
+      
+      const d = new Date(log.timestamp);
+      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (dailyStats[dateStr]) {
+        if (log.status === 'taken') dailyStats[dateStr].taken++;
+        if (log.status === 'missed') dailyStats[dateStr].missed++;
+      }
+    });
+
+    setTakenCount(taken);
+    setMissedCount(missed);
+    setPendingCount(0); // Simplified for now
+    
+    const formattedChartData = Object.keys(dailyStats).map(date => ({
+      name: date,
+      taken: dailyStats[date].taken,
+      missed: dailyStats[date].missed
+    }));
+    
+    setChartData(formattedChartData);
+  }, [allLogs, duration, selectedMember]);
 
   const formatDate = (isoString: string) => {
     return new Date(isoString).toLocaleString('en-US', {
@@ -111,13 +139,30 @@ export default function ReportsPage() {
           <p className="text-slate-500 mt-1">Medication adherence history</p>
         </div>
         <div className="flex items-center gap-2">
-          <select className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 outline-none">
-            <option>All Members</option>
+          <select 
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 outline-none"
+            value={selectedMember}
+            onChange={(e) => setSelectedMember(e.target.value)}
+          >
+            <option value="all">All Members</option>
+            <option value="myself">Myself</option>
+            {dependents.map(dep => (
+              <option key={dep.id} value={dep.id}>{dep.name}</option>
+            ))}
           </select>
           <div className="flex items-center bg-slate-100 p-1 rounded-lg">
-            <button className="px-3 py-1 text-sm font-medium bg-white shadow-sm rounded-md text-slate-900">7 Days</button>
-            <button className="px-3 py-1 text-sm font-medium text-slate-500 hover:text-slate-900">14 Days</button>
-            <button className="px-3 py-1 text-sm font-medium text-slate-500 hover:text-slate-900">30 Days</button>
+            <button 
+              onClick={() => setDuration(7)}
+              className={`px-3 py-1 text-sm font-medium rounded-md ${duration === 7 ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+            >7 Days</button>
+            <button 
+              onClick={() => setDuration(14)}
+              className={`px-3 py-1 text-sm font-medium rounded-md ${duration === 14 ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+            >14 Days</button>
+            <button 
+              onClick={() => setDuration(30)}
+              className={`px-3 py-1 text-sm font-medium rounded-md ${duration === 30 ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+            >30 Days</button>
           </div>
         </div>
       </div>
@@ -155,7 +200,7 @@ export default function ReportsPage() {
         {/* Bar Chart - Daily Activity */}
         <Card className="lg:col-span-2 border-slate-200 shadow-sm rounded-xl">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-bold text-slate-800">Daily Activity (Missed)</CardTitle>
+            <CardTitle className="text-lg font-bold text-slate-800">Daily Activity</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full mt-4">
@@ -179,7 +224,8 @@ export default function ReportsPage() {
                     cursor={{ fill: '#f1f5f9' }} 
                     contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
-                  <Bar dataKey="missed" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="taken" stackId="a" fill="#10b981" maxBarSize={40} />
+                  <Bar dataKey="missed" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
